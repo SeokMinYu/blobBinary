@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blob → DB 바이너리 저장</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        canvas {
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            background: white;
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .data-preview {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .data-preview .label {
+            color: #50fa7b;
+            font-weight: 600;
+        }
+        
+        .data-preview .value {
+            color: #f1fa8c;
+        }
+        
+        .data-preview .hex {
+            color: #8be9fd;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .db-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+            background: white;
+        }
+        
+        .db-table th,
+        .db-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .db-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .db-table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .db-table .blob-data {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-width: 400px;
+            word-break: break-all;
+            color: #666;
+        }
+        
+        .image-preview {
+            max-width: 200px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>💾 Blob → DB 바이너리 저장 예제</h1>
+            <p class="subtitle">서명을 그리면 DB에 저장되는 실제 바이너리 데이터를 확인할 수 있습니다</p>
+            
+            <!-- 서명 입력 -->
+            <div class="section">
+                <div class="section-title">1️⃣ 서명 그리기</div>
+                <canvas id="signature-pad"></canvas>
+                <div class="buttons">
+                    <button class="btn-danger" onclick="clearSignature()">🗑️ 지우기</button>
+                    <button class="btn-primary" onclick="saveToDatabase()">💾 DB에 저장</button>
+                    <button class="btn-secondary" onclick="loadFromDatabase()">📥 DB에서 불러오기</button>
+                </div>
+            </div>
+            
+            <div class="grid">
+                <!-- Blob 데이터 미리보기 -->
+                <div class="section">
+                    <div class="section-title">2️⃣ Blob 데이터 미리보기</div>
+                    <div class="info-box">
+                        <strong>Blob이란?</strong> Binary Large Object의 약자로, 이미지/동영상 등의 바이너리 데이터를 저장하는 타입입니다.
+                    </div>
+                    <div id="blobPreview" class="data-preview">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            서명을 그리고 "DB에 저장"을 클릭하세요
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Base64 데이터 미리보기 -->
+                <div class="section">
+                    <div class="section-title">3️⃣ Base64 인코딩 데이터</div>
+                    <div class="info-box">
+                        <strong>Base64란?</strong> 바이너리 데이터를 텍스트로 변환하여 DB에 저장하는 방식입니다.
+                    </div>
+                    <div id="base64Preview" class="data-preview">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            서명을 그리고 "DB에 저장"을 클릭하세요
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DB 테이블 예시 -->
+            <div class="section">
+                <div class="section-title">4️⃣ 데이터베이스에 저장된 데이터 예시</div>
+                <table class="db-table">
+                    <thead>
+                        <tr>
+                            <th>id</th>
+                            <th>user_name</th>
+                            <th>signature_data (BLOB)</th>
+                            <th>data_size</th>
+                            <th>mime_type</th>
+                            <th>created_at</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #999; padding: 20px;">
+                                저장된 데이터가 없습니다
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 저장된 서명 목록 -->
+            <div class="section">
+                <div class="section-title">5️⃣ 저장된 서명 목록</div>
+                <div id="savedSignatures" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                    <div style="text-align: center; color: #999; padding: 20px; width: 100%;">
+                        저장된 서명이 없습니다
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script>
+        // ============================================
+        // 1. 서명 패드 초기화
+        // ============================================
+        const canvas = document.getElementById('signature-pad');
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)',
+        });
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const rect = canvas.getBoundingClientRect();
+            const data = signaturePad.toData();
+            
+            canvas.width = rect.width * ratio;
+            canvas.height = rect.height * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            signaturePad.fromData(data);
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        function clearSignature() {
+            signaturePad.clear();
+        }
+
+        // 로컬 "데이터베이스" (시뮬레이션용)
+        let database = JSON.parse(localStorage.getItem('signatureDB') || '[]');
+
+        // ============================================
+        // 2. DB에 저장
+        // ============================================
+        async function saveToDatabase() {
+            if (signaturePad.isEmpty()) {
+                alert('⚠️ 서명을 먼저 그려주세요!');
+                return;
+            }
+
+            // Blob 생성
+            const blob = await new Promise(resolve => {
+                canvas.toBlob(resolve, 'image/png');
+            });
+
+            // Base64 변환 (DB 저장용)
+            const base64 = await blobToBase64(blob);
+            
+            // 바이너리 데이터 읽기
+            const arrayBuffer = await blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            // 16진수 변환 (미리보기용)
+            const hexString = Array.from(uint8Array.slice(0, 100))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ');
+
+            // DB에 저장될 데이터 생성
+            const dbRecord = {
+                id: database.length + 1,
+                user_name: '홍길동',
+                signature_data: base64, // Base64로 저장
+                data_size: blob.size,
+                mime_type: blob.type,
+                created_at: new Date().toISOString(),
+                // 추가 정보 (미리보기용)
+                _blob_url: URL.createObjectURL(blob),
+                _hex_preview: hexString,
+                _binary_array: Array.from(uint8Array.slice(0, 50))
+            };
+
+            // 저장
+            database.push(dbRecord);
+            localStorage.setItem('signatureDB', JSON.stringify(database));
+
+            // UI 업데이트
+            displayBlobData(dbRecord);
+            displayBase64Data(base64, blob.size);
+            updateDBTable();
+            updateSavedSignatures();
+
+            console.log('💾 DB에 저장된 데이터:', dbRecord);
+        }
+
+        // ============================================
+        // 3. Blob 데이터 표시
+        // ============================================
+        function displayBlobData(record) {
+            const preview = document.getElementById('blobPreview');
+            
+            const binaryPreview = record._binary_array.slice(0, 20)
+                .map(b => b.toString(2).padStart(8, '0'))
+                .join(' ');
+            
+            const hexPreview = record._hex_preview;
+            
+            preview.innerHTML = `
+                <div><span class="label">Blob 크기:</span> <span class="value">${record.data_size} bytes (${(record.data_size / 1024).toFixed(2)} KB)</span></div>
+                <div><span class="label">MIME 타입:</span> <span class="value">${record.mime_type}</span></div>
+                <div style="margin-top: 15px;"><span class="label">바이너리 데이터 (처음 20바이트):</span></div>
+                <div class="hex" style="margin-top: 5px; word-break: break-all; font-size: 11px;">${binaryPreview}</div>
+                <div style="margin-top: 15px;"><span class="label">16진수 표현 (처음 100바이트):</span></div>
+                <div class="hex" style="margin-top: 5px; word-break: break-all;">${hexPreview}</div>
+                <div style="margin-top: 15px; padding: 10px; background: #44475a; border-radius: 4px;">
+                    <div class="label">💡 이 데이터가 실제로 DB에 저장됩니다</div>
+                    <div style="color: #aaa; font-size: 11px; margin-top: 5px;">
+                        MySQL의 BLOB 컬럼에는 이러한 바이너리 데이터가 그대로 저장됩니다.
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // 4. Base64 데이터 표시
+        // ============================================
+        function displayBase64Data(base64, size) {
+            const preview = document.getElementById('base64Preview');
+            const base64Data = base64.split(',')[1];
+            const base64Preview = base64Data.substring(0, 500);
+            
+            preview.innerHTML = `
+                <div><span class="label">Base64 길이:</span> <span class="value">${base64Data.length} 문자</span></div>
+                <div><span class="label">원본 대비 크기:</span> <span class="value">+${((base64Data.length - size) / size * 100).toFixed(1)}%</span></div>
+                <div style="margin-top: 15px;"><span class="label">Base64 데이터 (처음 500자):</span></div>
+                <div class="value" style="margin-top: 5px; word-break: break-all; font-size: 11px;">${base64Preview}...</div>
+                <div style="margin-top: 15px; padding: 10px; background: #44475a; border-radius: 4px;">
+                    <div class="label">💡 DB 저장 방식 비교</div>
+                    <div style="color: #aaa; font-size: 11px; margin-top: 5px;">
+                        • BLOB: 바이너리 그대로 저장 (${size} bytes)<br>
+                        • TEXT: Base64로 인코딩하여 저장 (${base64Data.length} bytes, 약 33% 증가)
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // 5. DB 테이블 업데이트
+        // ============================================
+        function updateDBTable() {
+            const tbody = document.getElementById('dbTableBody');
+            tbody.innerHTML = '';
+
+            if (database.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999; padding: 20px;">
+                            저장된 데이터가 없습니다
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            database.forEach(record => {
+                const base64Preview = record.signature_data.substring(0, 100);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.user_name}</td>
+                    <td class="blob-data">
+                        <div style="margin-bottom: 5px; font-weight: 600; color: #333;">Base64 (처음 100자):</div>
+                        ${base64Preview}...
+                        <div style="margin-top: 10px; color: #999; font-size: 10px;">
+                            📊 전체 길이: ${record.signature_data.length} 문자
+                        </div>
+                    </td>
+                    <td>${(record.data_size / 1024).toFixed(2)} KB</td>
+                    <td>${record.mime_type}</td>
+                    <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ============================================
+        // 6. 저장된 서명 표시
+        // ============================================
+        function updateSavedSignatures() {
+            const container = document.getElementById('savedSignatures');
+            
+            if (database.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #999; padding: 20px; width: 100%;">
+                        저장된 서명이 없습니다
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            database.forEach((record, index) => {
+                const card = document.createElement('div');
+                card.style.cssText = 'border: 2px solid #ddd; border-radius: 8px; padding: 10px; background: white;';
+                card.innerHTML = `
+                    <img src="${record._blob_url}" class="image-preview" alt="서명 ${index + 1}">
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        <div><strong>ID:</strong> ${record.id}</div>
+                        <div><strong>크기:</strong> ${(record.data_size / 1024).toFixed(2)} KB</div>
+                        <div><strong>날짜:</strong> ${new Date(record.created_at).toLocaleString('ko-KR', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // 7. DB에서 불러오기
+        // ============================================
+        function loadFromDatabase() {
+            if (database.length === 0) {
+                alert('⚠️ 저장된 서명이 없습니다!');
+                return;
+            }
+
+            // 마지막 저장된 서명 불러오기
+            const lastRecord = database[database.length - 1];
+            
+            // Base64를 이미지로 변환하여 캔버스에 표시
+            const img = new Image();
+            img.onload = function() {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = lastRecord.signature_data;
+
+            alert(`✅ 서명 ID ${lastRecord.id}을(를) 불러왔습니다!`);
+        }
+
+        // ============================================
+        // 8. 헬퍼 함수
+        // ============================================
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // ============================================
+        // 9. 초기화
+        // ============================================
+        window.addEventListener('load', () => {
+            updateDBTable();
+            updateSavedSignatures();
+        });
+    </script>
+</body>
+</html>
